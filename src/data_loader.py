@@ -1,8 +1,4 @@
-import random
-from collections import defaultdict
 from torch.utils.data import Dataset, DataLoader
-from utils import PAD_ID, UNK_ID, SOS_ID, EOS_ID
-import numpy as np
 
 
 class DialogDataset(Dataset):

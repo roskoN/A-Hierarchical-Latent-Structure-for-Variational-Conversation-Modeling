@@ -1,19 +1,17 @@
-from itertools import cycle
 import numpy as np
 import torch
 import torch.nn as nn
 import models
 from layers import masked_cross_entropy
-from utils import to_var, time_desc_decorator, TensorboardWriter, pad_and_pack, normal_kl_div, to_bow, bag_of_words_loss, normal_kl_div, embedding_metric
+from utils import to_var, time_desc_decorator, TensorboardWriter, embedding_metric
 import os
 from tqdm import tqdm
 from math import isnan
 import re
-import math
-import pickle
 import gensim
 
 word2vec_path = "../datasets/GoogleNews-vectors-negative300.bin"
+
 
 class Solver(object):
     def __init__(self, config, train_data_loader, eval_data_loader, vocab, is_train=True, model=None):
@@ -139,17 +137,25 @@ class Solver(object):
                 target_conversations = [conv[1:] for conv in conversations]
 
                 # flatten input and target conversations
-                input_sentences = [sent for conv in input_conversations for sent in conv]
-                target_sentences = [sent for conv in target_conversations for sent in conv]
-                input_sentence_length = [l for len_list in sentence_length for l in len_list[:-1]]
-                target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
-                input_conversation_length = [l - 1 for l in conversation_length]
+                input_sentences = [
+                    sent for conv in input_conversations for sent in conv]
+                target_sentences = [
+                    sent for conv in target_conversations for sent in conv]
+                input_sentence_length = [
+                    l for len_list in sentence_length for l in len_list[:-1]]
+                target_sentence_length = [
+                    l for len_list in sentence_length for l in len_list[1:]]
+                input_conversation_length = [
+                    l - 1 for l in conversation_length]
 
                 input_sentences = to_var(torch.LongTensor(input_sentences))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                input_sentence_length = to_var(torch.LongTensor(input_sentence_length))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
-                input_conversation_length = to_var(torch.LongTensor(input_conversation_length))
+                input_sentence_length = to_var(
+                    torch.LongTensor(input_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
+                input_conversation_length = to_var(
+                    torch.LongTensor(input_conversation_length))
 
                 # reset gradient
                 self.optimizer.zero_grad()
@@ -178,7 +184,8 @@ class Solver(object):
                 batch_loss.backward()
 
                 # Gradient cliping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.clip)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.config.clip)
 
                 # Run optimizer
                 self.optimizer.step()
@@ -197,7 +204,7 @@ class Solver(object):
             self.validation_loss = self.evaluate()
 
             if epoch_i % self.config.plot_every_epoch == 0:
-                    self.write_summary(epoch_i)
+                self.write_summary(epoch_i)
 
         self.save_model(self.config.n_epoch)
 
@@ -223,7 +230,8 @@ class Solver(object):
             for input_sent, target_sent, output_sent in zip(input_sentences, target_sentences, generated_sentences):
                 input_sent = self.vocab.decode(input_sent)
                 target_sent = self.vocab.decode(target_sent)
-                output_sent = '\n'.join([self.vocab.decode(sent) for sent in output_sent])
+                output_sent = '\n'.join(
+                    [self.vocab.decode(sent) for sent in output_sent])
                 s = '\n'.join(['Input sentence: ' + input_sent,
                                'Ground truth: ' + target_sent,
                                'Generated response: ' + output_sent + '\n'])
@@ -246,17 +254,23 @@ class Solver(object):
             target_conversations = [conv[1:] for conv in conversations]
 
             # flatten input and target conversations
-            input_sentences = [sent for conv in input_conversations for sent in conv]
-            target_sentences = [sent for conv in target_conversations for sent in conv]
-            input_sentence_length = [l for len_list in sentence_length for l in len_list[:-1]]
-            target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
+            input_sentences = [
+                sent for conv in input_conversations for sent in conv]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            input_sentence_length = [
+                l for len_list in sentence_length for l in len_list[:-1]]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
             input_conversation_length = [l - 1 for l in conversation_length]
 
             with torch.no_grad():
                 input_sentences = to_var(torch.LongTensor(input_sentences))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                input_sentence_length = to_var(torch.LongTensor(input_sentence_length))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
+                input_sentence_length = to_var(
+                    torch.LongTensor(input_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
                 input_conversation_length = to_var(
                     torch.LongTensor(input_conversation_length))
 
@@ -303,18 +317,25 @@ class Solver(object):
             target_conversations = [conv[1:] for conv in conversations]
 
             # flatten input and target conversations
-            input_sentences = [sent for conv in input_conversations for sent in conv]
-            target_sentences = [sent for conv in target_conversations for sent in conv]
-            input_sentence_length = [l for len_list in sentence_length for l in len_list[:-1]]
-            target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
+            input_sentences = [
+                sent for conv in input_conversations for sent in conv]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            input_sentence_length = [
+                l for len_list in sentence_length for l in len_list[:-1]]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
             input_conversation_length = [l - 1 for l in conversation_length]
 
             with torch.no_grad():
                 input_sentences = to_var(torch.LongTensor(input_sentences))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                input_sentence_length = to_var(torch.LongTensor(input_sentence_length))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
-                input_conversation_length = to_var(torch.LongTensor(input_conversation_length))
+                input_sentence_length = to_var(
+                    torch.LongTensor(input_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
+                input_conversation_length = to_var(
+                    torch.LongTensor(input_conversation_length))
 
             sentence_logits = self.model(
                 input_sentences,
@@ -343,10 +364,11 @@ class Solver(object):
         return word_perplexity
 
     def embedding_metric(self):
-        word2vec =  getattr(self, 'word2vec', None)
+        word2vec = getattr(self, 'word2vec', None)
         if word2vec is None:
             print('Loading word2vec model')
-            word2vec = gensim.models.KeyedVectors.load_word2vec_format(word2vec_path, binary=True)
+            word2vec = gensim.models.KeyedVectors.load_word2vec_format(
+                word2vec_path, binary=True)
             self.word2vec = word2vec
         keys = word2vec.vocab
         self.model.eval()
@@ -358,7 +380,7 @@ class Solver(object):
         context_history = []
         sample_history = []
         n_sent = 0
-        n_conv = 0
+
         for batch_i, (conversations, conversation_length, sentence_length) \
                 in enumerate(tqdm(self.eval_data_loader, ncols=80)):
             # conversations: (batch_size) list of conversations
@@ -367,10 +389,14 @@ class Solver(object):
             # conversation_length: list of int
             # sentence_length: (batch_size) list of conversation list of sentence_lengths
 
-            conv_indices = [i for i in range(len(conversations)) if len(conversations[i]) >= n_context + n_sample_step]
-            context = [c for i in conv_indices for c in [conversations[i][:n_context]]]
-            ground_truth = [c for i in conv_indices for c in [conversations[i][n_context:n_context + n_sample_step]]]
-            sentence_length = [c for i in conv_indices for c in [sentence_length[i][:n_context]]]
+            conv_indices = [i for i in range(len(conversations)) if len(
+                conversations[i]) >= n_context + n_sample_step]
+            context = [c for i in conv_indices for c in [
+                conversations[i][:n_context]]]
+            ground_truth = [c for i in conv_indices for c in [
+                conversations[i][n_context:n_context + n_sample_step]]]
+            sentence_length = [c for i in conv_indices for c in [
+                sentence_length[i][:n_context]]]
 
             with torch.no_grad():
                 context = to_var(torch.LongTensor(context))
@@ -383,24 +409,32 @@ class Solver(object):
             context_history.append(context)
             sample_history.append(samples)
 
-            samples = [[self.vocab.decode(sent) for sent in c] for c in samples]
-            ground_truth = [[self.vocab.decode(sent) for sent in c] for c in ground_truth]
+            samples = [[self.vocab.decode(sent)
+                        for sent in c] for c in samples]
+            ground_truth = [
+                [self.vocab.decode(sent) for sent in c] for c in ground_truth]
 
             samples = [sent for c in samples for sent in c]
             ground_truth = [sent for c in ground_truth for sent in c]
 
-            samples = [[word2vec[s] for s in sent.split() if s in keys] for sent in samples]
-            ground_truth = [[word2vec[s] for s in sent.split() if s in keys] for sent in ground_truth]
+            samples = [[word2vec[s] for s in sent.split() if s in keys]
+                       for sent in samples]
+            ground_truth = [[word2vec[s] for s in sent.split() if s in keys]
+                            for sent in ground_truth]
 
-            indices = [i for i, s, g in zip(range(len(samples)), samples, ground_truth) if s != [] and g != []]
+            indices = [i for i, s, g in zip(
+                range(len(samples)), samples, ground_truth) if s != [] and g != []]
             samples = [samples[i] for i in indices]
             ground_truth = [ground_truth[i] for i in indices]
             n = len(samples)
             n_sent += n
 
-            metric_average = embedding_metric(samples, ground_truth, word2vec, 'average')
-            metric_extrema = embedding_metric(samples, ground_truth, word2vec, 'extrema')
-            metric_greedy = embedding_metric(samples, ground_truth, word2vec, 'greedy')
+            metric_average = embedding_metric(
+                samples, ground_truth, word2vec, 'average')
+            metric_extrema = embedding_metric(
+                samples, ground_truth, word2vec, 'extrema')
+            metric_greedy = embedding_metric(
+                samples, ground_truth, word2vec, 'greedy')
             metric_average_history.append(metric_average)
             metric_extrema_history.append(metric_extrema)
             metric_greedy_history.append(metric_greedy)
@@ -432,14 +466,13 @@ class VariationalSolver(Solver):
     def train(self):
         epoch_loss_history = []
         kl_mult = 0.0
-        conv_kl_mult = 0.0
+
         for epoch_i in range(self.epoch_i, self.config.n_epoch):
             self.epoch_i = epoch_i
             batch_loss_history = []
             recon_loss_history = []
             kl_div_history = []
-            kl_div_sent_history = []
-            kl_div_conv_history = []
+
             bow_loss_history = []
             self.model.train()
             n_total_words = 0
@@ -458,16 +491,22 @@ class VariationalSolver(Solver):
 
                 # flatten input and target conversations
                 sentences = [sent for conv in conversations for sent in conv]
-                input_conversation_length = [l - 1 for l in conversation_length]
-                target_sentences = [sent for conv in target_conversations for sent in conv]
-                target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
-                sentence_length = [l for len_list in sentence_length for l in len_list]
+                input_conversation_length = [
+                    l - 1 for l in conversation_length]
+                target_sentences = [
+                    sent for conv in target_conversations for sent in conv]
+                target_sentence_length = [
+                    l for len_list in sentence_length for l in len_list[1:]]
+                sentence_length = [
+                    l for len_list in sentence_length for l in len_list]
 
                 sentences = to_var(torch.LongTensor(sentences))
                 sentence_length = to_var(torch.LongTensor(sentence_length))
-                input_conversation_length = to_var(torch.LongTensor(input_conversation_length))
+                input_conversation_length = to_var(
+                    torch.LongTensor(input_conversation_length))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
 
                 # reset gradient
                 self.optimizer.zero_grad()
@@ -490,7 +529,8 @@ class VariationalSolver(Solver):
                 n_total_words += n_words.item()
 
                 if self.config.bow:
-                    bow_loss = self.model.compute_bow_loss(target_conversations)
+                    bow_loss = self.model.compute_bow_loss(
+                        target_conversations)
                     batch_loss += bow_loss
                     bow_loss_history.append(bow_loss.item())
 
@@ -506,11 +546,13 @@ class VariationalSolver(Solver):
                 batch_loss.backward()
 
                 # Gradient cliping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.clip)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.config.clip)
 
                 # Run optimizer
                 self.optimizer.step()
-                kl_mult = min(kl_mult + 1.0 / self.config.kl_annealing_iter, 1.0)
+                kl_mult = min(kl_mult + 1.0
+                              / self.config.kl_annealing_iter, 1.0)
 
             epoch_loss = np.sum(batch_loss_history) / n_total_words
             epoch_loss_history.append(epoch_loss)
@@ -536,7 +578,7 @@ class VariationalSolver(Solver):
             self.validation_loss = self.evaluate()
 
             if epoch_i % self.config.plot_every_epoch == 0:
-                    self.write_summary(epoch_i)
+                self.write_summary(epoch_i)
 
         return epoch_loss_history
 
@@ -561,7 +603,8 @@ class VariationalSolver(Solver):
             for input_sent, target_sent, output_sent in zip(input_sentences, target_sentences, generated_sentences):
                 input_sent = self.vocab.decode(input_sent)
                 target_sent = self.vocab.decode(target_sent)
-                output_sent = '\n'.join([self.vocab.decode(sent) for sent in output_sent])
+                output_sent = '\n'.join(
+                    [self.vocab.decode(sent) for sent in output_sent])
                 s = '\n'.join(['Input sentence: ' + input_sent,
                                'Ground truth: ' + target_sent,
                                'Generated response: ' + output_sent + '\n'])
@@ -589,9 +632,12 @@ class VariationalSolver(Solver):
             # flatten input and target conversations
             sentences = [sent for conv in conversations for sent in conv]
             input_conversation_length = [l - 1 for l in conversation_length]
-            target_sentences = [sent for conv in target_conversations for sent in conv]
-            target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
-            sentence_length = [l for len_list in sentence_length for l in len_list]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
+            sentence_length = [
+                l for len_list in sentence_length for l in len_list]
 
             with torch.no_grad():
                 sentences = to_var(torch.LongTensor(sentences))
@@ -599,11 +645,13 @@ class VariationalSolver(Solver):
                 input_conversation_length = to_var(
                     torch.LongTensor(input_conversation_length))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
 
             if batch_i == 0:
                 input_conversations = [conv[:-1] for conv in conversations]
-                input_sentences = [sent for conv in input_conversations for sent in conv]
+                input_sentences = [
+                    sent for conv in input_conversations for sent in conv]
                 with torch.no_grad():
                     input_sentences = to_var(torch.LongTensor(input_sentences))
                 self.generate_sentence(sentences,
@@ -667,9 +715,12 @@ class VariationalSolver(Solver):
             # flatten input and target conversations
             sentences = [sent for conv in conversations for sent in conv]
             input_conversation_length = [l - 1 for l in conversation_length]
-            target_sentences = [sent for conv in target_conversations for sent in conv]
-            target_sentence_length = [l for len_list in sentence_length for l in len_list[1:]]
-            sentence_length = [l for len_list in sentence_length for l in len_list]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
+            sentence_length = [
+                l for len_list in sentence_length for l in len_list]
 
             # n_words += sum([len([word for word in sent if word != PAD_ID]) for sent in target_sentences])
             with torch.no_grad():
@@ -678,7 +729,8 @@ class VariationalSolver(Solver):
                 input_conversation_length = to_var(
                     torch.LongTensor(input_conversation_length))
                 target_sentences = to_var(torch.LongTensor(target_sentences))
-                target_sentence_length = to_var(torch.LongTensor(target_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
 
             # treat whole batch as one data sample
             weights = []
@@ -718,4 +770,3 @@ class VariationalSolver(Solver):
         print(print_str)
 
         return word_perplexity
-

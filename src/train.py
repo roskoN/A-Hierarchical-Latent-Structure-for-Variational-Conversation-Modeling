@@ -1,10 +1,11 @@
-from solver import *
+from solver import Solver, VariationalSolver
 from data_loader import get_loader
 from configs import get_config
 from utils import Vocab
 import os
 import pickle
 from models import VariationalModels
+
 
 def load_pickle(path):
     with open(path, 'rb') as f:
@@ -47,7 +48,8 @@ if __name__ == '__main__':
     else:
         solver = Solver
 
-    solver = solver(config, train_data_loader, eval_data_loader, vocab=vocab, is_train=True)
+    solver = solver(config, train_data_loader,
+                    eval_data_loader, vocab=vocab, is_train=True)
 
     solver.build()
     solver.train()

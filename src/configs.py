@@ -1,7 +1,6 @@
 import os
 import argparse
 from datetime import datetime
-from collections import defaultdict
 from pathlib import Path
 import pprint
 from torch import optim
@@ -10,7 +9,10 @@ from layers.rnncells import StackedLSTMCell, StackedGRUCell
 
 project_dir = Path(__file__).resolve().parent.parent
 data_dir = project_dir.joinpath('datasets')
-data_dict = {'cornell': data_dir.joinpath('cornell'), 'ubuntu': data_dir.joinpath('ubuntu')}
+data_dict = {
+    'cornell': data_dir.joinpath('cornell'),
+    'ubuntu': data_dir.joinpath('ubuntu')
+}
 optimizer_dict = {'RMSprop': optim.RMSprop, 'Adam': optim.Adam}
 rnn_dict = {'lstm': nn.LSTM, 'gru': nn.GRU}
 rnncell_dict = {'lstm': StackedLSTMCell, 'gru': StackedGRUCell}
@@ -52,8 +54,10 @@ class Config(object):
 
         # Pickled Dataframes
         self.sentences_path = self.data_dir.joinpath('sentences.pkl')
-        self.sentence_length_path = self.data_dir.joinpath('sentence_length.pkl')
-        self.conversation_length_path = self.data_dir.joinpath('conversation_length.pkl')
+        self.sentence_length_path = self.data_dir.joinpath(
+            'sentence_length.pkl')
+        self.conversation_length_path = self.data_dir.joinpath(
+            'conversation_length.pkl')
 
         # Save path
         if self.mode == 'train' and self.checkpoint is None:

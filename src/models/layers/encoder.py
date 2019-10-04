@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence, PackedSequence
-from utils import to_var, reverse_order_valid, PAD_ID
-from .rnncells import StackedGRUCell, StackedLSTMCell
+from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
+from utils import to_var, PAD_ID
 
-import copy
 
 class BaseRNNEncoder(nn.Module):
     def __init__(self):
@@ -26,15 +23,15 @@ class BaseRNNEncoder(nn.Module):
 
         if self.use_lstm:
             return (to_var(torch.zeros(self.num_layers*self.num_directions,
-                                      batch_size,
-                                      self.hidden_size)),
+                                       batch_size,
+                                       self.hidden_size)),
                     to_var(torch.zeros(self.num_layers*self.num_directions,
-                                      batch_size,
-                                      self.hidden_size)))
+                                       batch_size,
+                                       self.hidden_size)))
         else:
             return to_var(torch.zeros(self.num_layers*self.num_directions,
-                                        batch_size,
-                                        self.hidden_size))
+                                      batch_size,
+                                      self.hidden_size))
 
     def batch_size(self, inputs=None, h=None):
         """
@@ -78,15 +75,16 @@ class EncoderRNN(BaseRNNEncoder):
             self.num_directions = 1
 
         # word embedding
-        self.embedding = nn.Embedding(vocab_size, embedding_size, padding_idx=PAD_ID)
+        self.embedding = nn.Embedding(
+            vocab_size, embedding_size, padding_idx=PAD_ID)
 
         self.rnn = rnn(input_size=embedding_size,
-                        hidden_size=hidden_size,
-                        num_layers=num_layers,
-                        bias=bias,
-                        batch_first=batch_first,
-                        dropout=dropout,
-                        bidirectional=bidirectional)
+                       hidden_size=hidden_size,
+                       num_layers=num_layers,
+                       bias=bias,
+                       batch_first=batch_first,
+                       dropout=dropout,
+                       bidirectional=bidirectional)
 
     def forward(self, inputs, input_length, hidden=None):
         """
@@ -115,7 +113,7 @@ class EncoderRNN(BaseRNNEncoder):
 
         # batch_first=True
         rnn_input = pack_padded_sequence(embedded, input_length_sorted,
-                                            batch_first=self.batch_first)
+                                         batch_first=self.batch_first)
 
         hidden = self.init_h(batch_size, hidden=hidden)
 
@@ -123,7 +121,8 @@ class EncoderRNN(BaseRNNEncoder):
         # hidden: [num_layers * num_directions, batch, hidden_size]
         self.rnn.flatten_parameters()
         outputs, hidden = self.rnn(rnn_input, hidden)
-        outputs, outputs_lengths = pad_packed_sequence(outputs, batch_first=self.batch_first)
+        outputs, outputs_lengths = pad_packed_sequence(
+            outputs, batch_first=self.batch_first)
 
         # Reorder outputs and hidden
         _, inverse_indices = indices.sort()
@@ -131,11 +130,12 @@ class EncoderRNN(BaseRNNEncoder):
 
         if self.use_lstm:
             hidden = (hidden[0].index_select(1, inverse_indices),
-                        hidden[1].index_select(1, inverse_indices))
+                      hidden[1].index_select(1, inverse_indices))
         else:
             hidden = hidden.index_select(1, inverse_indices)
 
         return outputs, hidden
+
 
 class ContextRNN(BaseRNNEncoder):
     def __init__(self, input_size, context_size, rnn=nn.GRU, num_layers=1, dropout=0.0,
@@ -157,12 +157,12 @@ class ContextRNN(BaseRNNEncoder):
             self.num_directions = 1
 
         self.rnn = rnn(input_size=input_size,
-                        hidden_size=context_size,
-                        num_layers=num_layers,
-                        bias=bias,
-                        batch_first=batch_first,
-                        dropout=dropout,
-                        bidirectional=bidirectional)
+                       hidden_size=context_size,
+                       num_layers=num_layers,
+                       bias=bias,
+                       batch_first=batch_first,
+                       dropout=dropout,
+                       bidirectional=bidirectional)
 
     def forward(self, encoder_hidden, conversation_length, hidden=None):
         """
@@ -176,14 +176,15 @@ class ContextRNN(BaseRNNEncoder):
                 - last hidden state
                 - (h, c) or h
         """
-        batch_size, seq_len, _  = encoder_hidden.size()
+        batch_size, seq_len, _ = encoder_hidden.size()
 
         # Sort for PackedSequence
         conv_length_sorted, indices = conversation_length.sort(descending=True)
         conv_length_sorted = conv_length_sorted.data.tolist()
         encoder_hidden_sorted = encoder_hidden.index_select(0, indices)
 
-        rnn_input = pack_padded_sequence(encoder_hidden_sorted, conv_length_sorted, batch_first=True)
+        rnn_input = pack_padded_sequence(
+            encoder_hidden_sorted, conv_length_sorted, batch_first=True)
 
         hidden = self.init_h(batch_size, hidden=hidden)
 
@@ -191,7 +192,8 @@ class ContextRNN(BaseRNNEncoder):
         outputs, hidden = self.rnn(rnn_input, hidden)
 
         # outputs: [batch_size, max_conversation_length, context_size]
-        outputs, outputs_length = pad_packed_sequence(outputs, batch_first=True)
+        outputs, outputs_length = pad_packed_sequence(
+            outputs, batch_first=True)
 
         # reorder outputs and hidden
         _, inverse_indices = indices.sort()
@@ -199,7 +201,7 @@ class ContextRNN(BaseRNNEncoder):
 
         if self.use_lstm:
             hidden = (hidden[0].index_select(1, inverse_indices),
-                    hidden[1].index_select(1, inverse_indices))
+                      hidden[1].index_select(1, inverse_indices))
         else:
             hidden = hidden.index_select(1, inverse_indices)
 

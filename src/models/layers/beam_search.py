@@ -56,7 +56,8 @@ class Beam(object):
         # import ipdb
         # ipdb.set_trace()
         # Initialize for length of top-k sequences
-        length = [[self.max_unroll] * self.beam_size for _ in range(self.batch_size)]
+        length = [[self.max_unroll]
+                  * self.beam_size for _ in range(self.batch_size)]
 
         # Last step output of the beam are not sorted => sort here!
         # Size not changed [batch size, beam_size]
@@ -108,7 +109,8 @@ class Beam(object):
                     idx_to_be_replaced = batch_start_idx + beam_idx_to_be_replaced
 
                     # Replace old information with new sequence information
-                    back_pointer[idx_to_be_replaced] = self.back_pointers[t][eos_idx].item()
+                    back_pointer[idx_to_be_replaced] = self.back_pointers[t][eos_idx].item(
+                    )
                     token_id[idx_to_be_replaced] = self.token_ids[t][eos_idx].item()
                     top_k_score[batch_idx,
                                 beam_idx_to_be_replaced] = self.scores[t].view(-1)[eos_idx].item()

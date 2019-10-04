@@ -1,11 +1,9 @@
 from solver import Solver, VariationalSolver
 from data_loader import get_loader
 from configs import get_config
-from utils import Vocab, Tokenizer
-import os
+from utils import Vocab
 import pickle
 from models import VariationalModels
-import re
 
 
 def load_pickle(path):
@@ -32,7 +30,8 @@ if __name__ == '__main__':
         shuffle=False)
 
     if config.model in VariationalModels:
-        solver = VariationalSolver(config, None, data_loader, vocab=vocab, is_train=False)
+        solver = VariationalSolver(
+            config, None, data_loader, vocab=vocab, is_train=False)
     else:
         solver = Solver(config, None, data_loader, vocab=vocab, is_train=False)
 

@@ -4,9 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from .rnncells import StackedLSTMCell, StackedGRUCell
 from .beam_search import Beam
-from .feedforward import FeedForward
 from utils import to_var, SOS_ID, UNK_ID, EOS_ID
-import math
 
 
 class BaseRNNDecoder(nn.Module):
@@ -70,7 +68,8 @@ class BaseRNNDecoder(nn.Module):
         # Sample next word from multinomial word distribution
         if self.sample:
             # x: [batch_size] - word index (next input)
-            x = torch.multinomial(self.softmax(out / self.temperature), 1).view(-1)
+            x = torch.multinomial(self.softmax(
+                out / self.temperature), 1).view(-1)
 
         # Greedy sampling
         else:
@@ -91,7 +90,8 @@ class BaseRNNDecoder(nn.Module):
 
         if self.training and self.word_drop > 0.0:
             if random.random() < self.word_drop:
-                embed = self.embedding(to_var(x.data.new([UNK_ID] * x.size(0))))
+                embed = self.embedding(
+                    to_var(x.data.new([UNK_ID] * x.size(0))))
             else:
                 embed = self.embedding(x)
         else:
@@ -123,14 +123,16 @@ class BaseRNNDecoder(nn.Module):
         #   [0, beam_size, beam_size * 2, .., beam_size * (batch_size-1)]
         #   Points where batch starts in [batch_size x beam_size] tensors
         #   Ex. position_idx[5]: when 5-th batch starts
-        batch_position = to_var(torch.arange(0, batch_size).long() * self.beam_size)
+        batch_position = to_var(torch.arange(
+            0, batch_size).long() * self.beam_size)
 
         # Initialize scores of sequence
         # [batch_size x beam_size]
         # Ex. batch_size: 5, beam_size: 3
         # [0, -inf, -inf, 0, -inf, -inf, 0, -inf, -inf, 0, -inf, -inf, 0, -inf, -inf]
         score = torch.ones(batch_size * self.beam_size) * -float('inf')
-        score.index_fill_(0, torch.arange(0, batch_size).long() * self.beam_size, 0.0)
+        score.index_fill_(0, torch.arange(
+            0, batch_size).long() * self.beam_size, 0.0)
         score = to_var(score)
 
         # Initialize Beam that stores decisions for backtracking
@@ -167,7 +169,8 @@ class BaseRNNDecoder(nn.Module):
             # top_k_idx: [batch_size, beam_size]
             #       each element of top_k_idx [0 ~ beam x vocab)
 
-            score, top_k_idx = score.view(batch_size, -1).topk(self.beam_size, dim=1)
+            score, top_k_idx = score.view(
+                batch_size, -1).topk(self.beam_size, dim=1)
 
             # Get token ids with remainder after dividing by top_k_idx
             # Each element is among [0, vocab_size)
@@ -293,7 +296,6 @@ class DecoderRNN(BaseRNNDecoder):
 
         # h: [num_layers, batch_size, hidden_size]
         h = self.init_h(batch_size, hidden=init_h)
-
 
         if not decode:
             out_list = []

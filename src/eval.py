@@ -1,8 +1,7 @@
 from solver import Solver, VariationalSolver
 from data_loader import get_loader
 from configs import get_config
-from utils import Vocab, Tokenizer
-import os
+from utils import Vocab
 import pickle
 from models import VariationalModels
 
@@ -30,7 +29,8 @@ if __name__ == '__main__':
         batch_size=config.batch_size)
 
     if config.model in VariationalModels:
-        solver = VariationalSolver(config, None, data_loader, vocab=vocab, is_train=False)
+        solver = VariationalSolver(
+            config, None, data_loader, vocab=vocab, is_train=False)
         solver.build()
         solver.importance_sample()
     else:

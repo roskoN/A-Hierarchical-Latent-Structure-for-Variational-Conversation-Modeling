@@ -12,9 +12,8 @@ import tarfile
 import pickle
 
 from tqdm import tqdm
-import pandas as pd
 
-from model.utils import Tokenizer, Vocab, PAD_TOKEN, SOS_TOKEN, EOS_TOKEN
+from model.utils import Tokenizer, Vocab, PAD_TOKEN, EOS_TOKEN
 
 project_dir = Path(__file__).resolve().parent
 datasets_dir = project_dir.joinpath('datasets/')
@@ -128,10 +127,11 @@ def read_and_tokenize(dialog_path, min_turn=3):
         dialog = [tokenizer(" ".join(sentence)) for sentence in dialog]
 
         if len(dialog) < min_turn:
-            print(f"Dialog {dialog_path} length ({len(dialog)}) < minimum required length {min_turn}")
+            print(
+                f"Dialog {dialog_path} length ({len(dialog)}) < minimum required length {min_turn}")
             return []
 
-    return dialog #, users
+    return dialog  # , users
 
 
 def pad_sentences(conversations, max_sentence_length=30, max_conversation_length=10):
@@ -154,7 +154,7 @@ def pad_sentences(conversations, max_sentence_length=30, max_conversation_length
     for conversation in conversations:
         if len(conversation) > max_conversation_length:
             conversation = conversation[:max_conversation_length]
-        sentence_length = [min(len(sentence) + 1, max_sentence_length) # +1 for EOS token
+        sentence_length = [min(len(sentence) + 1, max_sentence_length)  # +1 for EOS token
                            for sentence in conversation]
         all_sentence_length.append(sentence_length)
 
@@ -175,7 +175,8 @@ if __name__ == '__main__':
     # => SOS/EOS will surround sentence (EOS for source / SOS for target)
     # => maximum length of tensor = max_sentence_length + 1
     parser.add_argument('-s', '--max_sentence_length', type=int, default=30)
-    parser.add_argument('-c', '--max_conversation_length', type=int, default=10)
+    parser.add_argument('-c', '--max_conversation_length',
+                        type=int, default=10)
 
     # Vocabulary
     parser.add_argument('--max_vocab_size', type=int, default=20000)
@@ -210,6 +211,7 @@ if __name__ == '__main__':
         dialog_path_list = get_dialog_path_list(split_type)
 
         print(f'Tokenize.. (n_workers={n_workers})')
+
         def _tokenize_conversation(dialog_path):
             return read_and_tokenize(dialog_path)
         with Pool(n_workers) as pool:
@@ -217,7 +219,8 @@ if __name__ == '__main__':
                                       total=len(dialog_path_list)))
 
         # Filter too short conversations
-        conversations = list(filter(lambda x: len(x) >= min_turn, conversations))
+        conversations = list(
+            filter(lambda x: len(x) >= min_turn, conversations))
 
         # conversations: padded_sentences
         # [n_conversations, conversation_length (various), max_sentence_length]
@@ -234,9 +237,11 @@ if __name__ == '__main__':
             max_conversation_length=max_conv_len)
 
         print('Saving preprocessed data at', split_data_dir)
-        to_pickle(conversation_length, split_data_dir.joinpath('conversation_length.pkl'))
+        to_pickle(conversation_length, split_data_dir.joinpath(
+            'conversation_length.pkl'))
         to_pickle(sentences, split_data_dir.joinpath('sentences.pkl'))
-        to_pickle(sentence_length, split_data_dir.joinpath('sentence_length.pkl'))
+        to_pickle(sentence_length, split_data_dir.joinpath(
+            'sentence_length.pkl'))
 
         if split_type == 'train':
             print('Save Vocabulary...')
@@ -245,6 +250,7 @@ if __name__ == '__main__':
             vocab.update(max_size=max_vocab_size, min_freq=min_freq)
 
             print('Vocabulary size: ', len(vocab))
-            vocab.pickle(ubuntu_dir.joinpath('word2id.pkl'), ubuntu_dir.joinpath('id2word.pkl'))
+            vocab.pickle(ubuntu_dir.joinpath('word2id.pkl'),
+                         ubuntu_dir.joinpath('id2word.pkl'))
 
         print('Done!')
