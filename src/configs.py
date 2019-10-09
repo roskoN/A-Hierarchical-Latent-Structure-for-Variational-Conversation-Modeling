@@ -17,7 +17,7 @@ optimizer_dict = {'RMSprop': optim.RMSprop, 'Adam': optim.Adam}
 rnn_dict = {'lstm': nn.LSTM, 'gru': nn.GRU}
 rnncell_dict = {'lstm': StackedLSTMCell, 'gru': StackedGRUCell}
 username = Path.home().name
-save_dir = Path(f'/data1/{username}/conversation/')
+save_dir = Path(f'./conversation/')
 
 
 def str2bool(v):

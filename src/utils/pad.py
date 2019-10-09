@@ -7,14 +7,22 @@ def pad(tensor, length):
     if isinstance(tensor, Variable):
         var = tensor
         if length > var.size(0):
-            return torch.cat([var,
-                              torch.zeros(length - var.size(0), *var.size()[1:]).cuda()])
+            zeros = torch.zeros(length - var.size(0), *var.size()[1:])
+
+            if torch.cuda.is_available():
+                zeros = zeros.cuda()
+
+            return torch.cat([var, zeros])
         else:
             return var
     else:
         if length > tensor.size(0):
-            return torch.cat([tensor,
-                              torch.zeros(length - tensor.size(0), *tensor.size()[1:]).cuda()])
+            zeros = torch.zeros(length - tensor.size(0), *tensor.size()[1:])
+
+            if torch.cuda.is_available():
+                zeros = zeros.cuda()
+
+            return torch.cat([tensor, zeros])
         else:
             return tensor
 
