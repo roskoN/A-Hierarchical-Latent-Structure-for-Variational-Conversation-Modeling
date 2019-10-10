@@ -59,12 +59,28 @@ class Seq2Seq(nn.Module):
         decoder_init = decoder_init.view(
             self.decoder.num_layers, -1, self.decoder.hidden_size)
 
-        # [batch_size, seq_len, vocab_size]
-        decoder_outputs = self.decoder(target_sentences,
-                                       init_h=decoder_init,
-                                       decode=decode)
+        if not decode:
+            # [batch_size, seq_len, vocab_size]
+            decoder_outputs = self.decoder(target_sentences,
+                                           init_h=decoder_init,
+                                           decode=decode)
 
-        if return_encoder_output:
-            return encoder_outputs, decoder_outputs
+            if return_encoder_output:
+                return encoder_outputs, decoder_outputs
+            else:
+                return decoder_outputs
         else:
-            return decoder_outputs
+            # decoder_outputs = self.decoder(target_sentences,
+            #                                init_h=decoder_init,
+            #                                decode=decode)
+            # return decoder_outputs.unsqueeze(1)
+            # prediction: [batch_size, beam_size, max_unroll]
+            prediction, final_score, length = self.decoder.beam_decode(
+                init_h=decoder_init)
+
+            # Get top prediction only
+            # [batch_size, max_unroll]
+            # prediction = prediction[:, 0]
+
+            # [batch_size, beam_size, max_unroll]
+            return prediction
