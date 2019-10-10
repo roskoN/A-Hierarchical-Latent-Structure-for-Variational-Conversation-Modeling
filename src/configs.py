@@ -125,12 +125,12 @@ def get_config(parse=True, **optional_kwargs):
     # VAE model
     parser.add_argument('--z_sent_size', type=int, default=100)
     parser.add_argument('--z_conv_size', type=int, default=100)
-    parser.add_argument('--word_drop', type=float, default=0.0,
+    parser.add_argument('--word_drop', type=float, default=0.25,
                         help='only applied to variational models')
     parser.add_argument('--kl_threshold', type=float, default=0.0)
     parser.add_argument('--kl_annealing_iter', type=int, default=25000)
     parser.add_argument('--importance_sample', type=int, default=100)
-    parser.add_argument('--sentence_drop', type=float, default=0.0)
+    parser.add_argument('--sentence_drop', type=float, default=0.25)
 
     # Generation
     parser.add_argument('--n_context', type=int, default=1)
