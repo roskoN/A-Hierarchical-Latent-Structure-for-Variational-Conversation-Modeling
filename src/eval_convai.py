@@ -42,16 +42,16 @@ if __name__ == '__main__':
             'bow': bow_loss_history
         }
 
-        dt_string = datetime.now().strftime("%d/%m/%Y_%H:%M:%S")
+        dt_string = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
 
-        for loss_name, loss_data in losses.item():
-            with open(config.save_path + '/{}_{}.pkl'.format(loss_name, dt_string), 'rb') as fout:
+        for loss_name, loss_data in losses.items():
+            with open(config.save_path + '/{}_{}.pkl'.format(loss_name, dt_string), 'wb') as fout:
                 pickle.dump(file=fout, obj=loss_data)
     else:
         solver = Solver(config, None, data_loader, vocab=vocab, is_train=False)
         solver.build()
         batch_loss_history = solver.evaluate_convai()
 
-        dt_string = datetime.now().strftime("%d/%m/%Y_%H:%M:%S")
-        with open(config.save_path + '/eval_{}.pkl'.format(dt_string), 'rb') as fout:
+        dt_string = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+        with open(config.save_path + '/eval_{}.pkl'.format(dt_string), 'wb') as fout:
             pickle.dump(file=fout, obj=batch_loss_history)
