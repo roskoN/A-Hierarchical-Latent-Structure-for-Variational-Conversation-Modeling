@@ -302,6 +302,69 @@ class Solver(object):
 
         return epoch_loss
 
+    def evaluate_convai(self):
+        self.model.eval()
+        batch_loss_history = []
+        n_total_words = 0
+        for batch_i, (conversations, conversation_length, sentence_length) in enumerate(tqdm(self.eval_data_loader, ncols=80)):
+            # conversations: (batch_size) list of conversations
+            #   conversation: list of sentences
+            #   sentence: list of tokens
+            # conversation_length: list of int
+            # sentence_length: (batch_size) list of conversation list of sentence_lengths
+
+            input_conversations = [conv[:-1] for conv in conversations]
+            target_conversations = [conv[1:] for conv in conversations]
+
+            # flatten input and target conversations
+            input_sentences = [
+                sent for conv in input_conversations for sent in conv]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            input_sentence_length = [
+                l for len_list in sentence_length for l in len_list[:-1]]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
+            input_conversation_length = [l - 1 for l in conversation_length]
+
+            with torch.no_grad():
+                input_sentences = to_var(torch.LongTensor(input_sentences))
+                target_sentences = to_var(torch.LongTensor(target_sentences))
+                input_sentence_length = to_var(
+                    torch.LongTensor(input_sentence_length))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
+                input_conversation_length = to_var(
+                    torch.LongTensor(input_conversation_length))
+
+            if batch_i == 0:
+                self.generate_sentence(input_sentences,
+                                       input_sentence_length,
+                                       input_conversation_length,
+                                       target_sentences)
+
+            sentence_logits = self.model(
+                input_sentences,
+                input_sentence_length,
+                input_conversation_length,
+                target_sentences)
+
+            batch_loss, n_words = masked_cross_entropy(
+                sentence_logits,
+                target_sentences,
+                target_sentence_length)
+
+            assert not isnan(batch_loss.item())
+            batch_loss_history.append(batch_loss.item())
+            n_total_words += n_words.item()
+
+        epoch_loss = np.sum(batch_loss_history) / n_total_words
+
+        print_str = f'Validation loss: {epoch_loss:.3f}\n'
+        print(print_str)
+
+        return batch_loss_history
+
     def test(self):
         self.model.eval()
         batch_loss_history = []
@@ -694,6 +757,89 @@ class VariationalSolver(Solver):
         print('\n')
 
         return epoch_loss
+
+    def evaluate_convai(self):
+        self.model.eval()
+        batch_loss_history = []
+        recon_loss_history = []
+        kl_div_history = []
+        bow_loss_history = []
+        n_total_words = 0
+        for batch_i, (conversations, conversation_length, sentence_length) \
+                in enumerate(tqdm(self.eval_data_loader, ncols=80)):
+            # conversations: (batch_size) list of conversations
+            #   conversation: list of sentences
+            #   sentence: list of tokens
+            # conversation_length: list of int
+            # sentence_length: (batch_size) list of conversation list of sentence_lengths
+
+            target_conversations = [conv[1:] for conv in conversations]
+
+            # flatten input and target conversations
+            sentences = [sent for conv in conversations for sent in conv]
+            input_conversation_length = [l - 1 for l in conversation_length]
+            target_sentences = [
+                sent for conv in target_conversations for sent in conv]
+            target_sentence_length = [
+                l for len_list in sentence_length for l in len_list[1:]]
+            sentence_length = [
+                l for len_list in sentence_length for l in len_list]
+
+            with torch.no_grad():
+                sentences = to_var(torch.LongTensor(sentences))
+                sentence_length = to_var(torch.LongTensor(sentence_length))
+                input_conversation_length = to_var(
+                    torch.LongTensor(input_conversation_length))
+                target_sentences = to_var(torch.LongTensor(target_sentences))
+                target_sentence_length = to_var(
+                    torch.LongTensor(target_sentence_length))
+
+            if batch_i == 0:
+                input_conversations = [conv[:-1] for conv in conversations]
+                input_sentences = [
+                    sent for conv in input_conversations for sent in conv]
+                with torch.no_grad():
+                    input_sentences = to_var(torch.LongTensor(input_sentences))
+                self.generate_sentence(sentences,
+                                       sentence_length,
+                                       input_conversation_length,
+                                       input_sentences,
+                                       target_sentences)
+
+            sentence_logits, kl_div, _, _ = self.model(
+                sentences,
+                sentence_length,
+                input_conversation_length,
+                target_sentences)
+
+            recon_loss, n_words = masked_cross_entropy(
+                sentence_logits,
+                target_sentences,
+                target_sentence_length)
+
+            batch_loss = recon_loss + kl_div
+            if self.config.bow:
+                bow_loss = self.model.compute_bow_loss(target_conversations)
+                bow_loss_history.append(bow_loss.item())
+
+            assert not isnan(batch_loss.item())
+            batch_loss_history.append(batch_loss.item())
+            recon_loss_history.append(recon_loss.item())
+            kl_div_history.append(kl_div.item())
+            n_total_words += n_words.item()
+
+        epoch_loss = np.sum(batch_loss_history) / n_total_words
+        epoch_recon_loss = np.sum(recon_loss_history) / n_total_words
+        epoch_kl_div = np.sum(kl_div_history) / n_total_words
+
+        print_str = f'Validation loss: {epoch_loss:.3f}, recon_loss: {epoch_recon_loss:.3f}, kl_div: {epoch_kl_div:.3f}'
+        if bow_loss_history:
+            epoch_bow_loss = np.sum(bow_loss_history) / n_total_words
+            print_str += f', bow_loss = {epoch_bow_loss:.3f}'
+        print(print_str)
+        print('\n')
+
+        return recon_loss_history, kl_div_history, bow_loss_history
 
     def importance_sample(self):
         ''' Perform importance sampling to get tighter bound
