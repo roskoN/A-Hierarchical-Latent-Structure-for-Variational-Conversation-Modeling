@@ -1,13 +1,12 @@
 # Preprocess cornell movie dialogs dataset
 
 import argparse
+import json
 import os
 import pickle
-import random
 from multiprocessing import Pool
 from pathlib import Path
 from urllib.request import urlretrieve
-from zipfile import ZipFile
 
 from tqdm import tqdm
 
@@ -15,70 +14,37 @@ from src.utils import EOS_TOKEN, PAD_TOKEN, Tokenizer, Vocab
 
 project_dir = Path(__file__).resolve().parent
 datasets_dir = project_dir.joinpath("datasets/")
-cornell_dir = datasets_dir.joinpath("cornell/")
+convai1_dir = datasets_dir.joinpath("convai1/")
 
 # Tokenizer
 tokenizer = Tokenizer("spacy")
 
 
-def prepare_cornell_data():
+def prepare_convai1_data():
     """Download and unpack dialogs"""
 
-    zip_url = "http://www.mpi-sws.org/~cristian/data/cornell_movie_dialogs_corpus.zip"
-    zipfile_path = datasets_dir.joinpath("cornell.zip")
+    url = "http://convai.io/2017/data/train_full.json"
+    file_path = convai1_dir.joinpath("convai1.json")
 
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
     # Prepare Dialog data
-    if not cornell_dir.exists():
-        print(f"Downloading {zip_url} to {zipfile_path}")
-        urlretrieve(zip_url, zipfile_path)
-        print(f"Successfully downloaded {zipfile_path}")
-
-        zip_ref = ZipFile(zipfile_path, "r")
-        zip_ref.extractall(datasets_dir)
-        zip_ref.close()
-
-        datasets_dir.joinpath("cornell movie-dialogs corpus").rename(cornell_dir)
+    if not convai1_dir.exists():
+        convai1_dir.mkdir()
+    if not file_path.exists():
+        print(f"Downloading {url} to {file_path}")
+        urlretrieve(url, file_path)
+        print(f"Successfully downloaded {file_path}")
 
     else:
-        print("Cornell Data prepared!")
+        print("ConvAI1 Data prepared!")
 
-
-def loadLines(
-    fileName,
-    fields=["lineID", "characterID", "movieID", "character", "text"],
-    delimiter=" +++$+++ ",
-):
-    """
-    Args:
-        fileName (str): file to load
-        field (set<str>): fields to extract
-    Return:
-        dict<dict<str>>: the extracted fields for each line
-    """
-    lines = {}
-
-    with open(fileName, "r", encoding="iso-8859-1") as f:
-        for line in f:
-            values = line.split(delimiter)
-
-            # Extract fields
-            lineObj = {}
-            for i, field in enumerate(fields):
-                lineObj[field] = values[i]
-
-            lines[lineObj["lineID"]] = lineObj
-
-    return lines
+    return file_path
 
 
 def loadConversations(
     fileName,
-    lines,
-    fields=["character1ID", "character2ID", "movieID", "utteranceIDs"],
-    delimiter=" +++$+++ ",
 ):
     """
     Args:
@@ -89,22 +55,20 @@ def loadConversations(
     """
     conversations = []
 
-    with open(fileName, "r", encoding="iso-8859-1") as f:
-        for line in f:
-            values = line.split(delimiter)
+    with open(fileName, "rt") as f:
+        conv_file_data = json.load(f)
+
+        for dialogue in conv_file_data:
+            thread = dialogue["thread"]
+
+            if len(thread) < 3:
+                continue
 
             # Extract fields
             convObj = {}
-            for i, field in enumerate(fields):
-                convObj[field] = values[i]
-
-            # Convert string to list (convObj["utteranceIDs"] == "['L598485', 'L598486', ...]")
-            lineIds = eval(convObj["utteranceIDs"])
-
-            # Reassemble lines
             convObj["lines"] = []
-            for lineId in lineIds:
-                convObj["lines"].append(lines[lineId])
+            for utterance in thread:
+                convObj["lines"].append(utterance)
 
             conversations.append(convObj)
 
@@ -112,30 +76,7 @@ def loadConversations(
 
 
 def train_valid_test_split_by_conversation(conversations, split_ratio=[0.8, 0.1, 0.1]):
-    """Train/Validation/Test split by randomly selected movies"""
-
-    train_ratio, valid_ratio, test_ratio = split_ratio
-    assert train_ratio + valid_ratio + test_ratio == 1.0
-
-    n_conversations = len(conversations)
-
-    # Random shuffle movie list
-    random.seed(0)
-    random.shuffle(conversations)
-
-    # Train / Validation / Test Split
-    train_split = int(n_conversations * train_ratio)
-    valid_split = int(n_conversations * (train_ratio + valid_ratio))
-
-    train = conversations[:train_split]
-    valid = conversations[train_split:valid_split]
-    test = conversations[valid_split:]
-
-    print(f"Train set: {len(train)} conversations")
-    print(f"Validation set: {len(valid)} conversations")
-    print(f"Test set: {len(test)} conversations")
-
-    return train, valid, test
+    return conversations, conversations, conversations
 
 
 def tokenize_conversation(lines):
@@ -205,15 +146,11 @@ if __name__ == "__main__":
     n_workers = args.n_workers
 
     # Download and extract dialogs if necessary.
-    prepare_cornell_data()
-
-    print("Loading lines")
-    lines = loadLines(cornell_dir.joinpath("movie_lines.txt"))
-    print("Number of lines:", len(lines))
+    file_path = prepare_convai1_data()
 
     print("Loading conversations...")
     conversations = loadConversations(
-        cornell_dir.joinpath("movie_conversations.txt"), lines
+        file_path
     )
     print("Number of conversations:", len(conversations))
     print("Train/Valid/Test Split")
@@ -227,12 +164,10 @@ if __name__ == "__main__":
             pickle.dump(obj, f)
 
     for split_type, conv_objects in [
-        ("train", train),
-        ("valid", valid),
         ("test", test),
     ]:
         print(f"Processing {split_type} dataset...")
-        split_data_dir = cornell_dir.joinpath(split_type)
+        split_data_dir = convai1_dir.joinpath(split_type)
         split_data_dir.mkdir(exist_ok=True)
 
         print(f"Tokenize.. (n_workers={n_workers})")
@@ -274,7 +209,7 @@ if __name__ == "__main__":
 
             print("Vocabulary size: ", len(vocab))
             vocab.pickle(
-                cornell_dir.joinpath("word2id.pkl"), cornell_dir.joinpath("id2word.pkl")
+                convai1_dir.joinpath("word2id.pkl"), convai1_dir.joinpath("id2word.pkl")
             )
 
     print("Done!")
