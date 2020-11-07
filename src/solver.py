@@ -304,8 +304,7 @@ class Solver(object):
 
     def evaluate_convai(self):
         self.model.eval()
-        batch_loss_history = []
-        n_total_words = 0
+        batch_probs_history = []
         for batch_i, (conversations, conversation_length, sentence_length) in enumerate(tqdm(self.eval_data_loader, ncols=80)):
             # conversations: (batch_size) list of conversations
             #   conversation: list of sentences
@@ -349,21 +348,11 @@ class Solver(object):
                 input_conversation_length,
                 target_sentences)
 
-            batch_loss, n_words = masked_cross_entropy(
-                sentence_logits,
-                target_sentences,
-                target_sentence_length)
+            sentence_probs = torch.softmax(sentence_logits, dim=-1)
 
-            assert not isnan(batch_loss.item())
-            batch_loss_history.append(batch_loss.item())
-            n_total_words += n_words.item()
+            batch_probs_history.append(sentence_probs.detach().cpu().squeeze().numpy())
 
-        epoch_loss = np.sum(batch_loss_history) / n_total_words
-
-        print_str = f'Validation loss: {epoch_loss:.3f}\n'
-        print(print_str)
-
-        return batch_loss_history
+        return batch_probs_history
 
     def test(self):
         self.model.eval()
@@ -760,11 +749,7 @@ class VariationalSolver(Solver):
 
     def evaluate_convai(self):
         self.model.eval()
-        batch_loss_history = []
-        recon_loss_history = []
-        kl_div_history = []
-        bow_loss_history = []
-        n_total_words = 0
+        batch_probs_history = []
         for batch_i, (conversations, conversation_length, sentence_length) \
                 in enumerate(tqdm(self.eval_data_loader, ncols=80)):
             # conversations: (batch_size) list of conversations
@@ -812,34 +797,11 @@ class VariationalSolver(Solver):
                 input_conversation_length,
                 target_sentences)
 
-            recon_loss, n_words = masked_cross_entropy(
-                sentence_logits,
-                target_sentences,
-                target_sentence_length)
+            sentence_probs = torch.softmax(sentence_logits, dim=-1)
 
-            batch_loss = recon_loss + kl_div
-            if self.config.bow:
-                bow_loss = self.model.compute_bow_loss(target_conversations)
-                bow_loss_history.append(bow_loss.item())
+            batch_probs_history.append(sentence_probs.detach().cpu().squeeze().numpy())
 
-            assert not isnan(batch_loss.item())
-            batch_loss_history.append(batch_loss.item())
-            recon_loss_history.append(recon_loss.item())
-            kl_div_history.append(kl_div.item())
-            n_total_words += n_words.item()
-
-        epoch_loss = np.sum(batch_loss_history) / n_total_words
-        epoch_recon_loss = np.sum(recon_loss_history) / n_total_words
-        epoch_kl_div = np.sum(kl_div_history) / n_total_words
-
-        print_str = f'Validation loss: {epoch_loss:.3f}, recon_loss: {epoch_recon_loss:.3f}, kl_div: {epoch_kl_div:.3f}'
-        if bow_loss_history:
-            epoch_bow_loss = np.sum(bow_loss_history) / n_total_words
-            print_str += f', bow_loss = {epoch_bow_loss:.3f}'
-        print(print_str)
-        print('\n')
-
-        return recon_loss_history, kl_div_history, bow_loss_history
+        return batch_probs_history
 
     def importance_sample(self):
         ''' Perform importance sampling to get tighter bound
